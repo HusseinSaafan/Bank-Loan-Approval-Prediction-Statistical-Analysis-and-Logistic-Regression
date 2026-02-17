@@ -3,6 +3,37 @@ A data science project that analyzes key factors influencing loan approval decis
 
 ---
 
+> ## Disclaimer
+>
+> This dataset represents a **sample of a broader population** and is used for skills demonstration purposes.
+>
+> This project is intended to showcase the following skills:
+> - Exploratory Data Analysis (EDA)
+> - Statistical hypothesis testing
+> - Data cleaning and preprocessing
+> - Feature engineering
+> - Logistic regression modeling
+> - Statistical inference and coefficient interpretation
+> - Building preprocessing pipelines using `scikit-learn`
+> - Applying statistical modeling with `statsmodels`
+> - Translating analytical results into business insights
+>
+> This project is **not intended for real-world banking or production deployment**.
+>
+> In practical financial risk modeling, the approach would be significantly more complex and would typically include:
+> - Larger and more diverse datasets
+> - Advanced feature engineering
+> - Cross-validation and robust evaluation strategies
+> - Multiple model comparison (e.g., tree-based models, ensemble methods, gradient boosting)
+> - Hyperparameter tuning
+> - Fairness and bias assessment
+> - Regulatory compliance considerations
+> - Model monitoring and performance tracking
+>
+> The primary focus here is interpretability, statistical validation, and demonstrating core analytical competencies rather than optimizing predictive performance for production use.
+
+---
+
 ## Project Objective
 
 The goal of this project is to:
