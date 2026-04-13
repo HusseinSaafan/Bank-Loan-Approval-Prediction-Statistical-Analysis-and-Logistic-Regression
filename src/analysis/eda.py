@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
-from scipy.stats import shapiro, probplot
+from scipy.stats import shapiro, probplot, chi2_contingency, ttest_ind
 from src.utils.config import logger
 from src.utils.helpers import load_data
 
@@ -83,6 +83,35 @@ def plot_qq_plots(cleaned_df):
     except Exception as e:
         logger.error(f"Error plotting Q-Q plots: {e}")
 
+def num_t_test(cleaned_df):
+    logger.info("Performing t-tests on numerical features by Loan_Status.")
+    try:
+        # Compare average values between approved (Y) and rejected (N) groups to test
+        # whether each numerical feature has a statistically significant mean difference.
+        numerical_cols = [
+            col
+            for col in cleaned_df.select_dtypes(include=['int64', 'float64']).columns
+            if col != 'Loan_Status'
+        ]
+
+        for col in numerical_cols:
+            approved = cleaned_df[cleaned_df['Loan_Status'] == 'Y'][col].dropna()
+            rejected = cleaned_df[cleaned_df['Loan_Status'] == 'N'][col].dropna()
+
+            if approved.empty or rejected.empty:
+                logger.warning(f"{col}: skipped t-test due to insufficient data in one group.")
+                continue
+
+            t_stat, p_value = ttest_ind(approved, rejected, equal_var=False)
+            result = "Significant" if p_value <= 0.05 else "Not Significant"
+            logger.info(
+                f"{col}: mean(Y)={approved.mean():.3f}, mean(N)={rejected.mean():.3f}, "
+                f"t={t_stat:.3f}, p={p_value:.5f} -> {result}"
+            )
+    except Exception as e:
+        logger.error(f"Error performing numerical t-tests: {e}")
+
+
 def run_eda_num():
     file_path = PROJECT_ROOT / 'database' / 'Loan Approval Dataset Cleaned.csv'
     df = load_data(file_path)
@@ -90,7 +119,9 @@ def run_eda_num():
         explore_numerical_features(df)
         plot_numerical_distributions(df)
         perform_normality_tests(df)
+        num_t_test(df)
         plot_qq_plots(df)
+        num_t_test(df)
 
 # 1-plot bar plot for categorical features and save the plots in figures/eda/categorical_distributions.png
 def plot_categorical_distributions(cleaned_df):
@@ -142,6 +173,18 @@ def plot_categorical_target_relationships(cleaned_df):
         plt.close()
     except Exception as e:
         logger.error(f"Error plotting categorical-target relationships: {e}")
+        
+def cat_significance_test(cleaned_df):
+    logger.info("Performing chi-square significance tests for categorical features against Loan_Status.")
+    try:
+        categorical_cols = [col for col in cleaned_df.select_dtypes(include=['object']).columns if col != 'Loan_Status']
+        for col in categorical_cols:
+            contingency_table = pd.crosstab(cleaned_df[col], cleaned_df['Loan_Status'])
+            chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+            result = "Significant" if p_value <= 0.05 else "Not Significant"
+            logger.info(f"{col}: chi2={chi2:.3f}, p={p_value:.5f}, dof={dof} → {result}")
+    except Exception as e:
+        logger.error(f"Error performing chi-square tests: {e}")
 
 
 def run_eda_cat():
@@ -150,6 +193,7 @@ def run_eda_cat():
     if df is not None:
         plot_categorical_distributions(df)
         plot_categorical_target_relationships(df)
+        cat_significance_test(df)
 
 def run_eda():
     run_eda_num()
