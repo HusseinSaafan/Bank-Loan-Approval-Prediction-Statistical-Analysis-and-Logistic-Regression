@@ -123,6 +123,18 @@ def run_eda_num():
         plot_qq_plots(df)
         num_t_test(df)
 
+def explore_categorical_features(cleaned_df):
+    logger.info("Exploring categorical features in the dataset.")
+    try:
+        categorical_cols = cleaned_df.select_dtypes(include=['object']).columns
+        for col in categorical_cols:
+            logger.info(f"Exploring {col}:")
+            logger.info(cleaned_df[col].value_counts())
+            logger.info(cleaned_df[col].isnull().sum())
+            logger.info(cleaned_df[col].unique())
+    except Exception as e:
+        logger.error(f"Error exploring categorical features: {e}")
+
 # 1-plot bar plot for categorical features and save the plots in figures/eda/categorical_distributions.png
 def plot_categorical_distributions(cleaned_df):
     logger.info("Plotting distributions of categorical features.")
@@ -194,6 +206,7 @@ def run_eda_cat():
         plot_categorical_distributions(df)
         plot_categorical_target_relationships(df)
         cat_significance_test(df)
+        explore_categorical_features(df)
 
 def run_eda():
     run_eda_num()

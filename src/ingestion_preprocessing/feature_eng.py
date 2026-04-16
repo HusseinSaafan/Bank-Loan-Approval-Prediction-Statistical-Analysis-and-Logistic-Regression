@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
 from src.utils.config import logger
 from src.utils.helpers import load_data
 
@@ -87,7 +89,18 @@ def drop_missing_target(cleaned_df):
         logger.error(f"Error dropping rows with missing target variable: {e}")
     return cleaned_df
 
-def run_cleaning_pipeline():
+def drop_cat_missing(cleaned_df, col_name):
+    logger.info(f"Dropping rows with missing values in categorical column: {col_name}.")
+    try:
+        before_count = cleaned_df.shape[0]
+        cleaned_df.dropna(subset=[col_name], inplace=True)
+        after_count = cleaned_df.shape[0]
+        logger.info(f"Removed {before_count - after_count} rows with missing values in {col_name}.")
+    except Exception as e:
+        logger.error(f"Error dropping rows with missing values in {col_name}: {e}")
+    return cleaned_df
+
+def run_feature_eng():
     file_path = 'database/Loan Approval Dataset.csv'  # Update with your actual file path
     df = load_data(file_path)
     if df is not None:
@@ -96,6 +109,10 @@ def run_cleaning_pipeline():
         cleaned_df = treat_inconsistent_data(cleaned_df)
         cleaned_df = feature_handling(cleaned_df)
         cleaned_df = drop_missing_target(cleaned_df)
+        cleaned_df = drop_cat_missing(cleaned_df, 'Property_Area')
+        cleaned_df = drop_cat_missing(cleaned_df, 'Education')
+        cleaned_df = drop_cat_missing(cleaned_df, 'Married')
+        cleaned_df = drop_cat_missing(cleaned_df, 'Credit_History')
         cleaned_df = retype_columns(cleaned_df, 'Credit_History', 'boolean')
         logger.info("cleaned df types after retyping:")
         logger.info(cleaned_df.dtypes)
@@ -106,4 +123,4 @@ def run_cleaning_pipeline():
     else:
         logger.error("Failed to load data for cleaning pipeline.")
         return None
-run_cleaning_pipeline()
+
