@@ -20,19 +20,19 @@ def split_X_y(cleaned_df):
         return None, None
 
 
-def encode_predictors(X):
-    logger.info("Encoding predictor columns using OneHotEncoder.")
-    try:
-        encoder = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
-        encoded_array = encoder.fit_transform(X)
-        encoded_columns = encoder.get_feature_names_out(X.columns)
-        encoded_X = pd.DataFrame(encoded_array, columns=encoded_columns, index=X.index)
+# def encode_predictors(X):
+#     logger.info("Encoding predictor columns using OneHotEncoder.")
+#     try:
+#         encoder = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
+#         encoded_array = encoder.fit_transform(X)
+#         encoded_columns = encoder.get_feature_names_out(X.columns)
+#         encoded_X = pd.DataFrame(encoded_array, columns=encoded_columns, index=X.index)
 
-        logger.info("Predictor columns encoded successfully.")
-        return encoded_X, encoder
-    except Exception as e:
-        logger.error(f"Error encoding predictor columns: {e}")
-        return None, None
+#         logger.info("Predictor columns encoded successfully.")
+#         return encoded_X, encoder
+#     except Exception as e:
+#         logger.error(f"Error encoding predictor columns: {e}")
+#         return None, None
 
 
 def encode_train_test(X_train, X_test):
