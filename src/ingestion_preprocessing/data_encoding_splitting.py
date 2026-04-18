@@ -35,6 +35,24 @@ def encode_predictors(X):
         return None, None
 
 
+def encode_train_test(X_train, X_test):
+    logger.info("Encoding training and testing predictors with train-fitted OneHotEncoder.")
+    try:
+        encoder = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
+        X_train_array = encoder.fit_transform(X_train)
+        X_test_array = encoder.transform(X_test)
+
+        encoded_columns = encoder.get_feature_names_out(X_train.columns)
+        X_train_encoded = pd.DataFrame(X_train_array, columns=encoded_columns, index=X_train.index)
+        X_test_encoded = pd.DataFrame(X_test_array, columns=encoded_columns, index=X_test.index)
+
+        logger.info("Train and test predictors encoded successfully without leakage.")
+        return X_train_encoded, X_test_encoded, encoder
+    except Exception as e:
+        logger.error(f"Error encoding train-test predictors: {e}")
+        return None, None, None
+
+
 def split_train_test(X, y, test_size=0.2, random_state=42):
     logger.info("Splitting X and y into training and testing sets.")
     try:
@@ -54,14 +72,20 @@ def split_train_test(X, y, test_size=0.2, random_state=42):
         logger.error(f"Error splitting X and y into train and test sets: {e}")
         return None, None, None, None
 
-def run_data_encoding_splitting(cleaned_df):
+def run_data_encoding_splitting(cleaned_df, test_size=0.2, random_state=42):
     logger.info("Running data encoding and splitting pipeline.")
     X, y = split_X_y(cleaned_df)
     if X is not None and y is not None:
-        encoded_X, encoder = encode_predictors(X)
-        if encoded_X is not None:
-            X_train, X_test, y_train, y_test = split_train_test(encoded_X, y)
-            return X_train, X_test, y_train, y_test
+        X_train_raw, X_test_raw, y_train, y_test = split_train_test(
+            X,
+            y,
+            test_size=test_size,
+            random_state=random_state,
+        )
+        if not any(item is None for item in [X_train_raw, X_test_raw, y_train, y_test]):
+            X_train, X_test, _ = encode_train_test(X_train_raw, X_test_raw)
+            if X_train is not None and X_test is not None:
+                return X_train, X_test, y_train, y_test
     logger.error("Data encoding and splitting pipeline failed.")
     return None, None, None, None
 

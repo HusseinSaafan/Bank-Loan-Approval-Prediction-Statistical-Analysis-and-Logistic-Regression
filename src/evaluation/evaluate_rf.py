@@ -2,12 +2,12 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 
 from src.ingestion_preprocessing.data_encoding_splitting import run_data_encoding_splitting
 from src.ingestion_preprocessing.feature_eng import run_feature_eng
-from src.modeling.logistic_regression import tune_logistic_regression
+from src.modeling.random_forest import tune_random_forest
 from src.utils.config import logger
 
 
-def evaluate_logistic_regression(model, X_test, y_test):
-	logger.info("Evaluating logistic regression model performance on the test set.")
+def evaluate_random_forest(model, X_test, y_test):
+	logger.info("Evaluating Random Forest model performance on the test set.")
 	try:
 		y_pred = model.predict(X_test)
 		y_pred_proba = model.predict_proba(X_test)[:, 1]
@@ -41,12 +41,12 @@ def evaluate_logistic_regression(model, X_test, y_test):
 			'classification_report': report,
 		}
 	except Exception as e:
-		logger.error(f"Error evaluating logistic regression model: {e}")
+		logger.error(f"Error evaluating Random Forest model: {e}")
 		return None
 
 
-def run_logistic_regression_evaluation(random_state=42):
-	logger.info("Running logistic regression evaluation pipeline.")
+def run_random_forest_evaluation(random_state=42):
+	logger.info("Running Random Forest evaluation pipeline.")
 
 	cleaned_df = run_feature_eng()
 	if cleaned_df is None:
@@ -58,10 +58,13 @@ def run_logistic_regression_evaluation(random_state=42):
 		logger.error("Evaluation pipeline failed: data encoding or splitting produced None.")
 		return None
 
-	grid_search = tune_logistic_regression(X_train, y_train)
+	grid_search = tune_random_forest(X_train, y_train)
 	if grid_search is None:
 		logger.error("Evaluation pipeline failed: model tuning did not complete.")
 		return None
 
 	best_model = grid_search.best_estimator_
-	return evaluate_logistic_regression(best_model, X_test, y_test)
+	return evaluate_random_forest(best_model, X_test, y_test)
+
+
+
