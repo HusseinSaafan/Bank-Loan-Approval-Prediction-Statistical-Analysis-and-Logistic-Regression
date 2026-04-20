@@ -43,7 +43,7 @@ def encode_train_test(X_train, X_test):
 #Only Property_Area is one-hot encoded.
 #Education is mapped as Graduate = 1 and Not Graduate = 0.
 #Married is mapped as Yes = 1 and No = 0.
-#Credit_History is mapped with Y = 1 and N = 0.
+#Credit_History is mapped as True = 1 and False = 0.
     logger.info("Encoding predictor columns for training and testing sets.")
     try:
         encoder = OneHotEncoder(drop='first', sparse_output=False, handle_unknown='ignore')
@@ -58,7 +58,7 @@ def encode_train_test(X_train, X_test):
             mapping = {
                 'Education': {'Graduate': 1, 'Not Graduate': 0},
                 'Married': {'Yes': 1, 'No': 0},
-                'Credit_History': {'Y': 1, 'N': 0}
+                'Credit_History': {True: 1, False: 0}
             }[col]
             X_train_encoded[col] = X_train[col].map(mapping)
             X_test_encoded[col] = X_test[col].map(mapping)
