@@ -3,7 +3,9 @@ from src.evaluation.evaluate_rf import run_random_forest_evaluation
 from src.evaluation.evaluate_xgb import run_xgboost_evaluation
 from src.utils.config import logger
 
-
+def run_evaluation():
+    # load best model -  artifacts/model/best_model.pkl
+    # load test data - 
 # def compare_models(random_states=None):
 # 	logger.info("Running repeated evaluation for Logistic Regression, Random Forest, and XGBoost.")
 
