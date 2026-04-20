@@ -1,6 +1,7 @@
 import os
 
 import pandas as pd
+import plotly.graph_objects as go
 import statsmodels.api as sm
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_score
@@ -8,7 +9,7 @@ from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_sco
 from src.utils.config import logger
 
 TRAIN_ENCODED_PATH = os.path.join('database', 'train_encoded.csv')
-ARTIFACTS_DIR = 'artifacts'
+ARTIFACTS_MODELS_DIR = os.path.join('artifacts', 'models')
 
 
 def build_logistic_regression(X_train, y_train):
@@ -71,19 +72,34 @@ def tune_logistic_regression(X_train, y_train):
             cv=stratified_kfold,
             scoring='f1',
         )
-        fold_df = pd.DataFrame({
-            'fold': [f'fold_{i + 1}' for i in range(len(fold_scores))],
-            'f1_score': fold_scores,
-        })
-        fold_df.loc[len(fold_df)] = ['mean', fold_scores.mean()]
-        fold_df.loc[len(fold_df)] = ['std', fold_scores.std()]
+        fold_labels = [f'Fold {i + 1}' for i in range(len(fold_scores))]
+        logger.info(f"Per-fold F1 scores: {dict(zip(fold_labels, fold_scores.round(4)))}")
+        logger.info(f"Mean F1: {fold_scores.mean():.4f} | Std: {fold_scores.std():.4f}")
 
-        logger.info(f"Per-fold F1 scores:\n{fold_df.to_string(index=False)}")
-
-        os.makedirs(ARTIFACTS_DIR, exist_ok=True)
-        cv_output_path = os.path.join(ARTIFACTS_DIR, 'logistic_regression_cv_scores.csv')
-        fold_df.to_csv(cv_output_path, index=False)
-        logger.info(f"Cross-validation fold scores saved to: {cv_output_path}")
+        os.makedirs(ARTIFACTS_MODELS_DIR, exist_ok=True)
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=fold_labels, y=fold_scores,
+            mode='lines+markers', name='F1 Score',
+            line=dict(color='steelblue', width=2),
+            marker=dict(size=8),
+        ))
+        fig.add_hline(
+            y=fold_scores.mean(),
+            line=dict(color='tomato', dash='dash', width=1.5),
+            annotation_text=f'Mean F1 = {fold_scores.mean():.4f}',
+            annotation_position='top right',
+        )
+        fig.update_layout(
+            title='Logistic Regression — Cross-Validation F1 Score per Fold',
+            xaxis_title='Fold',
+            yaxis_title='F1 Score',
+            yaxis=dict(range=[0, 1]),
+            legend=dict(orientation='h'),
+        )
+        plot_path = os.path.join(ARTIFACTS_MODELS_DIR, 'logistic_regression_cv_scores.html')
+        fig.write_html(plot_path)
+        logger.info(f"Cross-validation fold scores plot saved to: {plot_path}")
 
         return grid_search
     except Exception as e:
@@ -109,19 +125,6 @@ def run_logistic_regression():
 
     X_train = train_df.drop(columns=[target_col])
     y_train = train_df[target_col]
-
-    # Drop columns where all values are NaN (no usable data)
-    all_nan_cols = X_train.columns[X_train.isnull().all()].tolist()
-    if all_nan_cols:
-        X_train = X_train.drop(columns=all_nan_cols)
-        logger.warning(f"Dropped fully-NaN columns: {all_nan_cols}")
-
-    # Drop rows that still have any NaN
-    before = len(X_train)
-    mask = X_train.notna().all(axis=1) & y_train.notna()
-    X_train = X_train[mask]
-    y_train = y_train[mask]
-    logger.info(f"Dropped {before - len(X_train)} rows with NaN. Remaining: {len(X_train)}")
 
     # Step 2: Find suitable logistic regression hyperparameters with grid search.
     grid_search = tune_logistic_regression(X_train, y_train)
