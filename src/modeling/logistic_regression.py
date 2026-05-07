@@ -1,12 +1,12 @@
+import json
 import os
 
 import pandas as pd
-import plotly.graph_objects as go
 import statsmodels.api as sm
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_score
-
+import pickle
 from src.utils.config import logger
+from src.utils.helpers import compute_cv_scores, plot_cv_scores, plot_shap_values, run_grid_search
 
 TRAIN_ENCODED_PATH = os.path.join('database', 'train_encoded.csv')
 ARTIFACTS_MODELS_DIR = os.path.join('artifacts', 'models')
@@ -33,8 +33,6 @@ def build_logistic_regression(X_train, y_train):
 def tune_logistic_regression(X_train, y_train):
     logger.info("Running GridSearchCV for logistic regression hyperparameter tuning.")
     try:
-        stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
         param_grid = [
             {
                 'C': [0.01, 0.1, 1, 10, 100],
@@ -51,56 +49,17 @@ def tune_logistic_regression(X_train, y_train):
         ]
 
         base_model = LogisticRegression(random_state=42)
-        grid_search = GridSearchCV(
-            estimator=base_model,
-            param_grid=param_grid,
-            cv=stratified_kfold,
-            scoring='f1',
-            n_jobs=-1,
-            refit=True,
-        )
-        grid_search.fit(X_train, y_train)
+        grid_search = run_grid_search(base_model, param_grid, X_train, y_train)
+        if grid_search is None:
+            return None
 
-        logger.info(f"Best parameters found: {grid_search.best_params_}")
-        logger.info(f"Best cross-validation F1 score: {grid_search.best_score_:.4f}")
-
-        # Compute per-fold F1 scores using the best estimator
-        fold_scores = cross_val_score(
-            grid_search.best_estimator_,
-            X_train,
-            y_train,
-            cv=stratified_kfold,
-            scoring='f1',
-        )
-        fold_labels = [f'Fold {i + 1}' for i in range(len(fold_scores))]
-        logger.info(f"Per-fold F1 scores: {dict(zip(fold_labels, fold_scores.round(4)))}")
-        logger.info(f"Mean F1: {fold_scores.mean():.4f} | Std: {fold_scores.std():.4f}")
-
-        os.makedirs(ARTIFACTS_MODELS_DIR, exist_ok=True)
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=fold_labels, y=fold_scores,
-            mode='lines+markers', name='F1 Score',
-            line=dict(color='steelblue', width=2),
-            marker=dict(size=8),
-        ))
-        fig.add_hline(
-            y=fold_scores.mean(),
-            line=dict(color='tomato', dash='dash', width=1.5),
-            annotation_text=f'Mean F1 = {fold_scores.mean():.4f}',
-            annotation_position='top right',
-        )
-        fig.update_layout(
+        fold_scores, fold_labels = compute_cv_scores(grid_search.best_estimator_, X_train, y_train)
+        plot_cv_scores(
+            fold_labels, fold_scores,
             title='Logistic Regression — Cross-Validation F1 Score per Fold',
-            xaxis_title='Fold',
-            yaxis_title='F1 Score',
-            yaxis=dict(range=[0, 1]),
-            legend=dict(orientation='h'),
+            color='steelblue',
+            plot_path=os.path.join(ARTIFACTS_MODELS_DIR, 'logistic_regression_cv_scores.html'),
         )
-        plot_path = os.path.join(ARTIFACTS_MODELS_DIR, 'logistic_regression_cv_scores.html')
-        fig.write_html(plot_path)
-        logger.info(f"Cross-validation fold scores plot saved to: {plot_path}")
-
         return grid_search
     except Exception as e:
         logger.error(f"Error during logistic regression grid search: {e}")
@@ -132,15 +91,63 @@ def run_logistic_regression():
         logger.error("Modeling pipeline failed: grid search tuning did not complete.")
         return None
 
+    plot_shap_values(
+        estimator=grid_search.best_estimator_,
+        X=X_train,
+        title='Logistic Regression — Mean Absolute SHAP Values',
+        plot_path=os.path.join(ARTIFACTS_MODELS_DIR, 'logistic_regression_shap_values.html'),
+    )
+
     # Step 3: Fit the statsmodels logistic regression for statistical interpretation.
     result = build_logistic_regression(X_train, y_train)
+    save_logistic_regression_model(grid_search.best_estimator_)
+
+    # Step 4: Save best model F1 score to JSON.
+    fold_scores, _ = compute_cv_scores(grid_search.best_estimator_, X_train, y_train)
+    if fold_scores is not None:
+        scores_dict = {
+            'model': 'logistic_regression',
+            'best_params': grid_search.best_params_,
+            'best_cv_f1': round(float(grid_search.best_score_), 6),
+            'cv_f1_per_fold': [round(float(s), 6) for s in fold_scores],
+            'cv_f1_mean': round(float(fold_scores.mean()), 6),
+            'cv_f1_std': round(float(fold_scores.std()), 6),
+        }
+        scores_path = os.path.join(ARTIFACTS_MODELS_DIR, 'logistic_regression_f1_scores.json')
+        try:
+            os.makedirs(ARTIFACTS_MODELS_DIR, exist_ok=True)
+            with open(scores_path, 'w') as f:
+                json.dump(scores_dict, f, indent=4)
+            logger.info(f"Logistic regression F1 scores saved to: {scores_path}")
+        except Exception as e:
+            logger.error(f"Error saving F1 scores: {e}")
+
     return {
         'grid_search': grid_search,
         'best_model': grid_search.best_estimator_,
         'statsmodels_result': result,
     }
 
-run_logistic_regression()
+def save_logistic_regression_model(model, file_name='logistic_regression.pkl'):
+    if model is None:
+        logger.error("No logistic regression model available to save.")
+        return
+
+    file_name = os.path.basename(file_name)
+    if not file_name.endswith('.pkl'):
+        file_name = f"{file_name}.pkl"
+    output_path = os.path.join(ARTIFACTS_MODELS_DIR, file_name)
+
+    logger.info(f"Saving logistic regression model to: {output_path}")
+    try:
+        os.makedirs(ARTIFACTS_MODELS_DIR, exist_ok=True)
+        with open(output_path, 'wb') as f:
+            pickle.dump(model, f)
+        logger.info("Model saved successfully.")
+    except Exception as e:
+        logger.error(f"Error saving logistic regression model: {e}")
+
+# run_logistic_regression()
 
 
 

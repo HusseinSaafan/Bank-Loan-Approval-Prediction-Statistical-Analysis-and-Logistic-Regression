@@ -1,0 +1,19 @@
+{
+    "model": "logistic_regression",
+    "best_params": {
+        "C": 0.1,
+        "max_iter": 500,
+        "penalty": "l1",
+        "solver": "liblinear"
+    },
+    "best_cv_f1": 0.879245,
+    "cv_f1_per_fold": [
+        0.869565,
+        0.875912,
+        0.900763,
+        0.875912,
+        0.874074
+    ],
+    "cv_f1_mean": 0.879245,
+    "cv_f1_std": 0.011006
+}
