@@ -1,0 +1,18 @@
+{
+    "confusion_matrix": [
+        [
+            16,
+            20
+        ],
+        [
+            2,
+            74
+        ]
+    ],
+    "interpretation": {
+        "true_negatives": 16,
+        "false_positives": 20,
+        "false_negatives": 2,
+        "true_positives": 74
+    }
+}

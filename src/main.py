@@ -8,7 +8,7 @@ from src.modeling.xgboost import run_xgboost
 from src.utils.config import logger
 from src.utils.helpers import compute_cv_scores, plot_cv_scores, plot_shap_values, run_grid_search
 from src.evaluation.best_model_selector import select_and_save_best_model
-
+from src.evaluation.test_best_model import run_test_best_model
 
 def main():
 	logger.info("Starting end-to-end pipeline for Logistic Regression, Random Forest, and XGBoost.")
@@ -27,26 +27,13 @@ def main():
 
 	logger.info("Running final model comparison.")
 	comparison_results = select_and_save_best_model()
-
-	if comparison_results is None:
-		logger.error("Final comparison failed.")
-		return None
-
+	if comparison_results is not None:
+		run_test_best_model()
+	else:
+		logger.error("Best model selection failed. Skipping test evaluation.")
+	
 	logger.info("End-to-end training and evaluation pipeline completed successfully.")
-	# return {
-	# 	'model_results': {
-	# 		'logistic_regression': logistic_model_results,
-	# 		'random_forest': random_forest_model_results,
-	# 		'xgboost': xgboost_model_results,
-	# 	},
-	# 	'evaluation_results': {
-	# 		'logistic_regression': logistic_eval_results,
-	# 		'random_forest': random_forest_eval_results,
-	# 		'xgboost': xgboost_eval_results,
-	# 	},
-	# 	'comparison_results': comparison_results,
-	# }
-
+	
 if __name__ == "__main__":
 	main()
 
